@@ -14,6 +14,11 @@ import serial.tools.list_ports
 import threading
 import continuous_threading #necessita baixar biblioteca
 import datetime
+import numpy
+import matplotlib.pyplot as plt
+from drawnow import * #necessita baixar
+#import matplotlib.animation as animation
+import pandas as pd #necessita baixar
 
 
 serialInst = serial.Serial()
@@ -41,6 +46,15 @@ rpm_atual = 0
 freio_atual = False
 temperatura_atual = False
 bateria_atual = False
+
+
+# variáveis gráficos ################################
+
+dataVel = []
+dataRPM = []
+dataTempo = []
+#FigVel = plt.figure()
+#velx = figVel.add_subplot(111)
 
 
 def evento_baudRate_selector(baudRate_recebido):
@@ -76,6 +90,15 @@ def evento_botao_desconectar():
 def evento_botao_apagar():
     texto_recebido.delete("0.0", "end")
 
+def evento_exportar_excel():
+    data = {'horario': dataTempo,
+            'velocidade': dataVel,
+            'RPM': dataRPM}
+    
+    df = pd.DataFrame(data)
+
+    df.to_excel(r'D:\UTF\Baja\PS\Case\TelemetriaPy\XL\data.xlsx', index=False)
+
 
 
 # Janela Principal #############################
@@ -108,8 +131,8 @@ velocidade_imagem = customtkinter.CTkImage(dark_image=Image.open(os.path.join(im
 rpm_imagem = customtkinter.CTkImage(dark_image=Image.open(os.path.join(image_path, "rpmDark.png")), light_image=Image.open(os.path.join(image_path, "rpmLight.png")), size=(50,50))
 conectar_imagem = customtkinter.CTkImage(Image.open(os.path.join(image_path, "conectar.png")) ,size=(25, 25))
 
-
-
+grafico_velocidade_imagem = customtkinter.CTkImage(Image.open(os.path.join(image_path, "LogoDark.png")), size=(200,100))
+grafico_rpm_imagem = customtkinter.CTkImage(Image.open(os.path.join(image_path, "LogoDark.png")), size=(200,100))
 
 
 
@@ -208,6 +231,26 @@ bateria_aviso.grid(row=6, column=0, padx=20, pady=0)
 freio_label = customtkinter.CTkLabel(frame_telemetria_esquerdo, text=("  Freio: Desativado"), font=customtkinter.CTkFont("Impact", 24), image=freio_imagem, compound="left")
 freio_label.grid(row=7, column=0, padx=20, pady=50)
 
+velocidade_grafico = customtkinter.CTkLabel(frame_telemetria_direito, image=grafico_velocidade_imagem, text="", height=100, width=200)
+velocidade_grafico.grid(row=0, column=0, padx=20, pady=0)
+
+rpm_grafico = customtkinter.CTkLabel(frame_telemetria_direito, image=grafico_rpm_imagem, text="")
+rpm_grafico.grid(row=1, column=0, padx=20, pady=0)
+
+
+
+
+
+
+# Frame Log ########################################
+
+botao_exportar = customtkinter.CTkButton(frame_log, text="Exportar para Excel", command=evento_exportar_excel)
+botao_exportar.grid(row=0, column=0, padx=50, pady=100, sticky="we")
+
+
+
+
+
 # Funções de Evento Código ########################
 def selecionar_frame(nome):
     frame_botao_telemetria.configure(fg_color=("gray75", "gray25") if nome == "telemetria" else "transparent")
@@ -254,8 +297,6 @@ def evento_mudar_tema(nova_aparencia):
 
 
 
-
-
 # Thread #########################
 
 def lerSerial():
@@ -266,8 +307,7 @@ def lerSerial():
     global temperatura_atual
     global freio_atual
     global bateria_atual
-    print("Entrou Serial")
-    print(status_conexao)
+
     if status_conexao == True:
 
         print("tentando Imprimir Serial")
@@ -277,6 +317,8 @@ def lerSerial():
         hoje = datetime.datetime.now()
         horario = hoje.strftime("%H:%M:%S.%f")
         horario = horario[0:11]
+        horario_graf = horario[0:8]
+        dataTempo.append(horario_graf)
 
         serial_texto = serial_texto.decode("utf-8")
 
@@ -284,7 +326,10 @@ def lerSerial():
         texto_recebido.insert("0.0", horario + " -> " + texto)
 
         velocidade_atual = int(texto[texto.index("V") + 1: texto.index("T")])
-        rpm_atual = int(texto[texto.index("R") + 1: texto.index("V")])
+        dataVel.append(velocidade_atual)
+
+        rpm_atual = int(texto[texto.index("R") + 1: texto.index("V")])*10
+        dataRPM.append(rpm_atual)
 
         temperatura_string = texto[texto.index("T") + 1: texto.index("F")]
         freio_string = texto[texto.index("F") + 1: texto.index("B")]
@@ -306,6 +351,8 @@ def lerSerial():
             bateria_atual = True
 
 
+
+
         
 
 
@@ -318,17 +365,13 @@ def atualizar():
     global bateria_atual
 
     velocidade_label.configure(text= ("Velocidade: " + str(velocidade_atual) + " km/h"))
-    rpm_label.configure(text="RPM: " + str(rpm_atual*10))
+    rpm_label.configure(text="RPM: " + str(rpm_atual))
 
-    rpm_progress_bar.set(rpm_atual/400)
+    rpm_progress_bar.set(rpm_atual/4000)
 
-    print("Freio: " + str(freio_atual))
-    print("Temperatura: " + str(temperatura_atual))
-    print("Bateria: " + str(bateria_atual))
-
-    if(rpm_atual<250):
+    if(rpm_atual<2500):
         rpm_progress_bar.configure(progress_color = "blue")
-    elif (rpm_atual >= 250 and rpm_atual < 350):
+    elif (rpm_atual >= 2500 and rpm_atual < 3500):
         rpm_progress_bar.configure(progress_color = "green")
     else:
         rpm_progress_bar.configure(progress_color = "red")
@@ -347,6 +390,44 @@ def atualizar():
         freio_label.configure(text=("  Freio: Ativado"))
     else:
         freio_label.configure(text=("  Freio: Desativado"))
+
+    
+
+    
+
+
+def atualizar_graficos():
+
+    dataVelGrafico = dataVel[-60:]
+    dataRPMGrafico = dataRPM[-60:]
+
+    plt.ylim(0, 60)
+    plt.title("Velocidade")
+    plt.grid(False)
+    plt.ylabel("Km/h")
+    plt.plot(dataVelGrafico)
+    plt.savefig('imgs/graficoVEL.png', transparent=True)
+
+    plt.clf()
+
+    plt.ylim(0, 5000)
+    plt.title("RPM")
+    plt.grid(False)
+    plt.ylabel("RPM")
+    plt.plot(dataRPMGrafico)
+    plt.savefig('imgs/graficoRPM.png', transparent=True)
+
+    plt.clf()
+
+    global grafico_velocidade_imagem
+    global grafico_rpm_imagem
+
+    grafico_velocidade_imagem = customtkinter.CTkImage(Image.open(os.path.join(image_path, "graficoVEL.png")), size=(700,350))
+    velocidade_grafico.configure(image=grafico_velocidade_imagem)
+
+    grafico_rpm_imagem = customtkinter.CTkImage(Image.open(os.path.join(image_path, "graficoRPM.png")), size=(700,350))
+    rpm_grafico.configure(image=grafico_rpm_imagem)
+
 
 # Frame Navegação ####################
 
@@ -375,7 +456,17 @@ menu_tema.grid(row=6, column=0, padx=20, pady=20, sticky="s")
 
 threadSerial = continuous_threading.PeriodicThread(0.5, lerSerial)
 threadAtualizacao = continuous_threading.PeriodicThread(0.5, atualizar)
+threadGraficos = continuous_threading.PeriodicThread(1.5, atualizar_graficos)
 threadSerial.start()
 threadAtualizacao.start()
+threadGraficos.start()
+
+#ani = animation.FuncAnimation(figVel, animacao, frames=100, fargs=(dataVel), interval=100)
+
+#plt.show()
 
 janela.mainloop()
+
+threadSerial.stop()
+threadAtualizacao.stop()
+threadGraficos.stop()
