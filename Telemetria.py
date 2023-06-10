@@ -5,20 +5,23 @@
 # GitHub: IshikawaRasoto
 # E-mail para contato: rafaelrasoto@alunos.utfpr.edu.br || ishikawarasoto@gmail.com
 #
+#
+# É necessário alterar o diretório do Excel na função evento_exportar_excel
 ######################
 
-import customtkinter #necessita baixar biblioteca
+import customtkinter #necessita baixar biblioteca customtkinter
 import os
-from PIL import Image
-import serial.tools.list_ports
+from PIL import Image #necessita baixar
+import serial.tools.list_ports #necessita baixar pyserial
 import threading
-import continuous_threading #necessita baixar biblioteca
+import continuous_threading #necessita baixar biblioteca continuous_threading
 import datetime
-import numpy
-import matplotlib.pyplot as plt
-from drawnow import * #necessita baixar
+import numpy #baixar numpy
+import matplotlib.pyplot as plt #necessita baixar matplotlib
+from drawnow import * #necessita baixar drawnow
 #import matplotlib.animation as animation
-import pandas as pd #necessita baixar
+import pandas as pd #necessita baixar pandas
+#baixar openpyxl
 
 
 serialInst = serial.Serial()
@@ -97,7 +100,7 @@ def evento_exportar_excel():
     
     df = pd.DataFrame(data)
 
-    df.to_excel(r'D:\UTF\Baja\PS\Case\TelemetriaPy\XL\data.xlsx', index=False)
+    df.to_excel(r'C:\Users\rraso\OneDrive\Documentos\UTFPR\BAJA\Case\TelemetriaPython\XL\data.xlsx', index=False)
 
 
 
